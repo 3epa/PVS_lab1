@@ -1,52 +1,49 @@
 #include "leds.h"
-#include "main.h"
+#include "my_gpio.h"
 
 #define LED_PORT        GPIOD
-#define PIN_GREEN       GPIO_PIN_13
-#define PIN_YELLOW      GPIO_PIN_14
-#define PIN_RED         GPIO_PIN_15
+#define PIN_GREEN       (1U << 13)
+#define PIN_YELLOW      (1U << 14)
+#define PIN_RED         (1U << 15)
 
-// Текущее состояние светодиодов
 static led_state_t s_states[LED_COUNT] = {LED_OFF, LED_OFF, LED_OFF};
 
 static void LED_Update(void)
 {
-    // Зеленый на PD13
-    if (s_states[LED_GREEN] == LED_ON) {
-        HAL_GPIO_WritePin(LED_PORT, PIN_GREEN, GPIO_PIN_SET);
-    } else {
-        HAL_GPIO_WritePin(LED_PORT, PIN_GREEN, GPIO_PIN_RESET);
-    }
+    // 1. Зеленый светодиод на PD13
+    my_gpio_write_pin(LED_PORT, PIN_GREEN,
+                      (s_states[LED_GREEN] == LED_ON) ? MY_GPIO_SET : MY_GPIO_RESET);
 
-    // Двухцветный светодиод на PD14 и PD15 (встречно-параллельный)
+    // 2. Двухцветный встречно-параллельный светодиод (PD14 / PD15)
     if (s_states[LED_YELLOW] == LED_ON && s_states[LED_RED] == LED_OFF) {
-        HAL_GPIO_WritePin(LED_PORT, PIN_YELLOW, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(LED_PORT, PIN_RED, GPIO_PIN_RESET);
+        // Зажигаем желтый: PD14 = 1, PD15 = 0 в одну атомарную операцию
+        my_gpio_write_mask(LED_PORT, PIN_YELLOW, PIN_RED);
     }
     else if (s_states[LED_RED] == LED_ON && s_states[LED_YELLOW] == LED_OFF) {
-        HAL_GPIO_WritePin(LED_PORT, PIN_YELLOW, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(LED_PORT, PIN_RED, GPIO_PIN_SET);
+        // Зажигаем красный: PD15 = 1, PD14 = 0 в одну атомарную операцию
+        my_gpio_write_mask(LED_PORT, PIN_RED, PIN_YELLOW);
     }
     else {
         // Оба выключены
-        HAL_GPIO_WritePin(LED_PORT, PIN_YELLOW | PIN_RED, GPIO_PIN_RESET);
+        my_gpio_write_pin(LED_PORT, PIN_YELLOW | PIN_RED, MY_GPIO_RESET);
     }
 }
 
 void LED_Init(void)
 {
-    GPIO_InitTypeDef gpio = {0};
+    // Прямое включение тактирования GPIOD в шине AHB1
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
 
-    __HAL_RCC_GPIOD_CLK_ENABLE();
+    my_gpio_init_t cfg = {
+        .pin_mask   = PIN_GREEN | PIN_YELLOW | PIN_RED,
+        .mode       = MY_GPIO_MODE_OUTPUT,
+        .otype      = MY_GPIO_OTYPE_PP,
+        .speed      = MY_GPIO_SPEED_LOW,
+        .pull       = MY_GPIO_PULL_NONE,
+        .init_state = MY_GPIO_RESET // Защита от выброса: защелка сразу в 0
+    };
 
-    HAL_GPIO_WritePin(LED_PORT, PIN_GREEN | PIN_YELLOW | PIN_RED, GPIO_PIN_RESET);
-
-    gpio.Pin = PIN_GREEN | PIN_YELLOW | PIN_RED;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
-    gpio.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(LED_PORT, &gpio);
-
+    my_gpio_init(LED_PORT, &cfg);
     LED_AllOff();
 }
 

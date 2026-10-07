@@ -1,8 +1,9 @@
 #include "button.h"
-#include "main.h"
+#include "my_gpio.h"
+#include "main.h" // Нужен только для счетчика времени HAL_GetTick()
 
 #define BTN_PORT        GPIOC
-#define BTN_PIN         GPIO_PIN_15
+#define BTN_PIN         (1U << 15)
 #define DEBOUNCE_MS     50
 
 typedef enum {
@@ -17,16 +18,19 @@ static uint32_t s_timer = 0;
 
 void Button_Init(void)
 {
-    GPIO_InitTypeDef gpio = {0};
+    // Включение тактирования GPIOC напрямую в регистрах RCC
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
 
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    my_gpio_init_t cfg = {
+        .pin_mask   = BTN_PIN,
+        .mode       = MY_GPIO_MODE_INPUT,
+        .otype      = MY_GPIO_OTYPE_PP,
+        .speed      = MY_GPIO_SPEED_LOW,
+        .pull       = MY_GPIO_PULL_UP, // Подтяжка к питанию (нажата = 0)
+        .init_state = MY_GPIO_RESET
+    };
 
-    gpio.Pin = BTN_PIN;
-    gpio.Mode = GPIO_MODE_INPUT;
-    gpio.Pull = GPIO_PULLUP;
-    gpio.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(BTN_PORT, &gpio);
-
+    my_gpio_init(BTN_PORT, &cfg);
     s_state = STATE_IDLE;
 }
 
@@ -35,8 +39,8 @@ button_event_t Button_Update(void)
     button_event_t event = BUTTON_EVENT_NONE;
     uint32_t now = HAL_GetTick();
 
-    // Кнопка замыкает на землю (активный 0)
-    bool pressed = (HAL_GPIO_ReadPin(BTN_PORT, BTN_PIN) == GPIO_PIN_RESET);
+    // Читаем входной регистр IDR через наш драйвер
+    bool pressed = (my_gpio_read_pin(BTN_PORT, BTN_PIN) == MY_GPIO_RESET);
 
     switch (s_state)
     {
