@@ -10,3 +10,5 @@ Release/
 
 .settings/
 *.launch
+Core/combined_source.txt
+Core/merge.sh
