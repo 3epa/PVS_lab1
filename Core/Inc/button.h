@@ -5,8 +5,7 @@
 #include <stdbool.h>
 
 typedef enum {
-    BUTTON_EVENT_NONE = 0,
-    BUTTON_EVENT_CLICK
+	BUTTON_EVENT_NONE = 0, BUTTON_EVENT_CLICK
 } button_event_t;
 
 void Button_Init(void);

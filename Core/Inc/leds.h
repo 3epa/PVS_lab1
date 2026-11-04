@@ -4,15 +4,11 @@
 #include <stdint.h>
 
 typedef enum {
-    LED_GREEN = 0,
-    LED_YELLOW,
-    LED_RED,
-    LED_COUNT
+	LED_GREEN = 0, LED_YELLOW, LED_RED, LED_COUNT
 } led_color_t;
 
 typedef enum {
-    LED_OFF = 0,
-    LED_ON  = 1
+	LED_OFF = 0, LED_ON = 1
 } led_state_t;
 
 void LED_Init(void);
