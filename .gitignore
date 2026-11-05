@@ -12,3 +12,14 @@ Release/
 *.launch
 Core/combined_source.txt
 Core/merge.sh
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Gradle build & cache
+.gradle/
+build/
+simulator/.gradle/
+simulator/build/
+

@@ -1,4 +1,3 @@
-package src.main.java.sim;
+package sim;
 
-public class Step {
-}
+public record Step(boolean g, boolean y, boolean r, int delayMs) {}
